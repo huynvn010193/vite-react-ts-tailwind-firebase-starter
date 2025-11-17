@@ -1,13 +1,15 @@
 import { Dialog } from '@headlessui/react';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import { useAuthState } from '~/components/contexts/UserContext';
 import { SignInButton } from '~/components/domain/auth/SignInButton';
 import { SignOutButton } from '~/components/domain/auth/SignOutButton';
 import { Head } from '~/components/shared/Head';
 import { useFirestore } from '~/lib/firebase';
+import { ToastContainer, toast } from 'react-toastify';
+import { PencilSquareIcon } from '@heroicons/react/24/outline';
 
-type Tool = {
+export type Tool = {
   id: string;
   title: string;
   description: string;
@@ -29,6 +31,9 @@ function Index() {
     description: '',
     url: '',
   });
+
+  const [formError, setFormError] = useState<boolean>(false);
+
   useEffect(() => {
     async function fetchData() {
       const toolsCollection = collection(firestore, 'tools');
@@ -49,12 +54,40 @@ function Index() {
     setInputData({ ...inputData, [field]: value });
   };
 
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // Save data to Firebase
+    try {
+      const toolsCollection = collection(firestore, 'tools');
+      const newTool: Partial<Tool> = {
+        title: inputData.title,
+        description: inputData.description,
+        url: inputData.url,
+      };
+      await addDoc(toolsCollection, newTool);
+      toast.success('🦄 Saved tool successful!', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: 'dark',
+      });
+      setTools([...tools, newTool as Tool]);
+      setInputData({ title: '', description: '', url: '' });
+    } catch (error) {
+      setFormError(true);
+    }
+  };
+
   return (
     <>
       <Head title="TOP PAGE" />
       <div className="hero min-h-screen bg-slate-800">
         <div className="max-w-5xl mx-auto">
-          <form className="flex">
+          <form className="flex" onSubmit={handleFormSubmit}>
             <input
               type="text"
               placeholder="title"
@@ -83,26 +116,26 @@ function Index() {
               Add New Tool
             </button>
           </form>
-          <table className="table w-full bg-transparent text-slate-50">
-            <thead>
-              <tr>
-                <th className="bg-slate-900 border border-slate-700 text-slate-50">Title</th>
-                <th className="bg-slate-900 border border-slate-700 text-slate-50">Description</th>
-                <th className="bg-slate-900 border border-slate-700 text-slate-50">Link</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tools.map((tool) => (
-                <tr key={tool.id}>
-                  <td className="bg-slate-800 border border-slate-700">{tool.title}</td>
-                  <td className="bg-slate-800 border border-slate-700">{tool.description}</td>
-                  <td className="bg-slate-800 border border-slate-700"> {tool.url}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="grid grid-cols-3 gap-4 w-full bg-transparent text-slate-50">
+            {tools.map((tool) => (
+              <div
+                key={tool.id}
+                className="h-48 group relative flex flex-col justify-between rounded-md shadow-slate-900 shadow-md p-4 bg-gradient-to-r from-slate-800 to-slate-700"
+              >
+                <div>
+                  <div className="text-xl mb-2 font-bold">{tool.title}</div>
+                  <div className="">{tool.description}</div>
+                </div>
+                <a className="text-slate-200" href={tool.url}>
+                  {tool.url}
+                </a>
+                <PencilSquareIcon className="h-6 w-6 text-blue-500 hidden group-hover:block absolute top-4 right-4 cursor-pointer" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+      <ToastContainer />
     </>
   );
 }
